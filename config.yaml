@@ -1,0 +1,19 @@
+database:
+  driverClass: org.h2.Driver
+  user: sa
+  password:
+  url: jdbc:h2:mem:test;DB_CLOSE_DELAY=-1
+  properties:
+    charSet: UTF-8
+  validationQuery: "/* DataBase Health Check */ SELECT 1"
+  validationQueryTimeout: 3s
+
+server:
+  adminContextPath: /admin
+  applicationContextPath: /
+  applicationConnectors:
+    - type: http
+      port: 8080
+  adminConnectors:
+    - type: http
+      port: 8081

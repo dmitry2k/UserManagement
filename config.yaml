@@ -1,12 +1,8 @@
 database:
-  driverClass: org.h2.Driver
-  user: sa
-  password:
-  url: jdbc:h2:mem:test;DB_CLOSE_DELAY=-1
-  properties:
-    charSet: UTF-8
-  validationQuery: "/* DataBase Health Check */ SELECT 1"
-  validationQueryTimeout: 3s
+  driverClass: com.mysql.cj.jdbc.Driver
+  url: 'jdbc:mysql://0.0.0.0:8801/test?createDatabaseIfNotExist=true&characterEncoding=UTF-8&forceConnectionTimeZoneToSession=true&preserveInstants=true&connectionTimeZone=UTC'
+  user: root
+  password: venturegain
 
 server:
   adminContextPath: /admin

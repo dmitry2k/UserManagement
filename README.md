@@ -57,5 +57,11 @@ If user has not been found or has been already deleted, 404 error code (NOT_FOUN
 
 ### Some notes:
 
+First of all you need to start MySQL docker container:
+`gradle startMysqlDevContainer`
+
 To start server you can run this command:
 `gradle run --args "server config.yaml"`
+
+After stopping server, you can stop MySQL docker container:
+`gradle stopMysqlDevContainer`

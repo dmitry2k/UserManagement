@@ -1,8 +1,17 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.io.ByteArrayOutputStream
 
 plugins {
-    kotlin("jvm") version "1.7.20"
+    kotlin("jvm") version "1.8.0"
     application
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+    kotlinOptions {
+        jvmTarget = "11"
+        apiVersion = "1.8"
+        languageVersion = "1.8"
+    }
 }
 
 group = "org.swtecnn"
@@ -36,7 +45,7 @@ dependencies {
 
 
     // Runtime dependencies:
-    runtimeOnly("com.h2database:h2:1.4.200")
+    runtimeOnly("mysql:mysql-connector-java:8.0.26")
 
 
     // Test dependencies:
@@ -48,9 +57,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.junit-pioneer:junit-pioneer:1.1.0")
 
-    testImplementation(platform("io.strikt:strikt-bom:0.28.0"))
-    testImplementation("io.strikt:strikt-core")
-    testImplementation("io.strikt:strikt-java-time")
+    testImplementation("io.strikt:strikt-core:0.34.1")
 
     testImplementation("io.mockk:mockk:1.9.3")
 }
@@ -59,10 +66,93 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "11"
-}
-
 application {
     mainClass.set("com.swtecnn.user.management.App")
+}
+
+val mysqlDevPort = "8801"
+val mysqlDevName = "user-management-mysql-playground"
+val mysqlDevUser = "root"
+val mysqlDevPassword = "venturegain"
+
+tasks {
+
+    val startMysqlDevContainer by registering {
+        group = "MySQL"
+        description = "Start a MySQL Docker container."
+
+        doLast {
+            // Start the container
+            exec {
+                commandLine(
+                    "docker", "run",
+                    "--publish", "$mysqlDevPort:3306",
+                    "--name", mysqlDevName,
+                    "--detach",
+                    "--env", "MYSQL_ROOT_PASSWORD=$mysqlDevPassword",
+                    "--health-cmd", "mysql -u $mysqlDevUser --password=$mysqlDevPassword --execute 'show databases;'",
+                    "--health-interval", "1s",
+                    "--health-retries", "20",
+                    "mysql:8"
+                )
+            }
+
+            // Wait for it to be ready (and get the associated IPs)
+            var dockerPsOutput: String
+            do {
+                dockerPsOutput = ByteArrayOutputStream().use { stdout ->
+                    exec {
+                        commandLine(
+                            "docker",
+                            "ps",
+                            "--filter",
+                            "name=$mysqlDevName",
+                            "--filter",
+                            "health=healthy",
+                            "--format",
+                            "{{.Ports}}"
+                        )
+
+                        standardOutput = stdout
+                        isIgnoreExitValue = true
+                    }
+
+                    stdout.toString(Charsets.UTF_8)
+                }.trim()
+            } while (dockerPsOutput.isEmpty())
+
+            logger.lifecycle("Docker container $mysqlDevName started, running, and healthy!")
+            logger.lifecycle("Port mappings:")
+            logger.lifecycle("  HOST:HOST_PORT -> CONTAINER_PORT")
+            logger.lifecycle("  localhost:$mysqlDevPort -> 3306")
+
+            logger.lifecycle(
+                """
+            MySQL Dev Container is ready to use!
+
+            Try executing sql commands on the container with the following command:
+
+                docker exec -it $mysqlDevName mysql -u $mysqlDevUser -p
+
+            Make sure to use '$mysqlDevPassword' as the password.
+
+            When you're done with the database, or want to stop it to clear its
+            state and start a new one, run:
+
+                ./gradlew stopMysqlDevContainer
+                """.trimIndent()
+            )
+        }
+    }
+
+    val stopMysqlDevContainer by registering {
+        group = "MySQL"
+        description = "Stop container started with startMysqlDevContainer."
+        mustRunAfter(startMysqlDevContainer)
+        doLast {
+            exec { commandLine("docker", "kill", mysqlDevName) }
+            exec { commandLine("docker", "rm", mysqlDevName) }
+        }
+    }
+
 }
